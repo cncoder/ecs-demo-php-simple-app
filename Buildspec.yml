@@ -1,40 +1,29 @@
 version: 0.2
 
-env:
-  variables:
-    JAVA_HOME: "/usr/lib/jvm/java-8-openjdk-amd64"
-  parameter-store:
-    LOGIN_PASSWORD: "dockerLoginPassword"
-
 phases:
-  install:
-    commands:
-      - echo Entered the install phase...
-      - apt-get update -y
-      - apt-get install -y maven
-    finally:
-      - echo This always runs even if the update or install command fails 
+
   pre_build:
+
     commands:
-      - echo Entered the pre_build phase...
-      - docker login –u User –p $LOGIN_PASSWORD
-    finally:
-      - echo This always runs even if the login command fails 
+
+      - $(aws ecr get-login)
+
+      - TAG="$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | head -c 8)"
+
   build:
+
     commands:
-      - echo Entered the build phase...
-      - echo Build started on `date`
-      - mvn install
-    finally:
-      - echo This always runs even if the install command fails
+
+-    docker build --tag "852088822079.dkr.ecr.us-east-1.amazonaws.com/cicd-demo-ecr01:${TAG}" .
+
   post_build:
+
     commands:
-      - echo Entered the post_build phase...
-      - echo Build completed on `date`
+
+      - docker push "852088822079.dkr.ecr.us-east-1.amazonaws.com/cicd-demo-ecr01:${TAG}"
+
+      - printf '{"tag":"%s"}' $TAG > build.json
+
 artifacts:
-  files:
-    - target/messageUtil-1.0.jar
-  discard-paths: yes
-cache:
-  paths:
-    - '/root/.m2/**/*'
+
+  files: build.json
